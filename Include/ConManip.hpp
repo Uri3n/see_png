@@ -1,15 +1,18 @@
 #ifndef CONCOLOURS_HPP
 #define CONCOLOURS_HPP
 #include <cstdint>
+#include <string>
 
 namespace spng {
   enum class ConFg : uint16_t {
-    None   = 0,
-    Green  = 32,
-    Yellow = 33,
-    Blue   = 34,
-    Cyan   = 36,
-    Red    = 91,
+    None    = 0,
+    Green   = 32,
+    Yellow  = 33,
+    Blue    = 34,
+    Magenta = 35,
+    Cyan    = 36,
+    White   = 37,
+    Red     = 91,
   };
 
   enum class ConStyle : uint16_t {
@@ -18,13 +21,13 @@ namespace spng {
   };
 
 #if defined(SEE_PNG_WIN32)
-  bool are_console_virtual_sequences_enabled();
-  void enable_console_virtual_sequences();
-  void maybe_enable_console_virtual_sequences();
+  auto are_console_virtual_sequences_enabled() -> bool;
+  auto enable_console_virtual_sequences() -> void;
+  auto maybe_enable_console_virtual_sequences() -> void;
 #endif
-  void set_console(ConFg fg);
-  void set_console(ConStyle cs);
-  void reset_console();
+  auto set_console(ConFg fg) -> void;
+  auto set_console(ConStyle cs) -> void;
+  auto reset_console() -> void;
 }
 
 #endif //CONCOLOURS_HPP

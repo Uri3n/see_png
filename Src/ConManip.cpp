@@ -1,4 +1,5 @@
 #include <ConManip.hpp>
+#include <Fmt.hpp>
 #include <print>
 #include <string>
 
@@ -31,14 +32,13 @@ auto spng::enable_console_virtual_sequences() -> void {
   ::SetConsoleMode(h_stderr, mode_stderr | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
-void spng::maybe_enable_console_virtual_sequences() {
+auto spng::maybe_enable_console_virtual_sequences() -> void {
   if(are_console_virtual_sequences_enabled())
     return;
   enable_console_virtual_sequences();
 }
 
 #endif // #if defined(SEE_PNG_WIN32)
-
 
 auto spng::set_console(const ConStyle cs) -> void {
 #if defined(SEE_PNG_WIN32)

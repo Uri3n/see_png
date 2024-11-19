@@ -5,9 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(SEE_PNG_SOURCE_FILES
   Src/Main.cpp
   Src/FileRef.cpp
-  Src/Png.cpp
   Src/ConManip.cpp
-  Include/Png.hpp
   Include/CompileAttrs.hpp
   Include/FileRef.hpp
   Include/Defer.hpp
@@ -16,6 +14,10 @@ set(SEE_PNG_SOURCE_FILES
   Include/Panic.hpp
   Include/ConManip.hpp
   Include/Fmt.hpp
+  Src/Carrier.cpp
+  Src/Chunks.cpp
+  Include/Carrier.hpp
+  Include/Chunks.hpp
 )
 
 add_executable(see_png ${SEE_PNG_SOURCE_FILES})

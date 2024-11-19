@@ -1,21 +1,19 @@
 #include <print>
 #include <iostream>
-#include <Png.hpp>
+#include <Carrier.hpp>
 
-#define TEST_FILE "C:\\Users\\diago\\Desktop\\example.png"
+#define TEST_FILE "Tests\\timestamp.png"
 using namespace spng;
 
 int main() try {
   auto ref = FileRef(TEST_FILE);
   auto carrier = Carrier(ref);
-  auto meta = carrier.metadata();
 
-  std::println("bit depth: {}", (int)meta.bit_depth());
-  std::println("interlace: {}", (int)meta.interlace_method());
-  std::println("color type: {}", (int)meta.color_type());
-  std::println("filter: {}", (int)meta.filter_method());
-  std::println("height: {}", (int)meta.height());
-  std::println("width: {}", (int)meta.width());
+  for(const auto& chunk : carrier.chunks()) {
+    chunk.print();
+  }
+
+  carrier.print_summary();
   return 0;
 } catch(const std::exception& e) {
   std::cerr << "EXCEPTION: " << e.what() << std::endl;
