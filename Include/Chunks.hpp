@@ -46,7 +46,6 @@ namespace spng {
   class Chunk;
   class Ihdr;
   class Plte;
-  class Trns;
   class Srgb;
   class Phys;
   class Chrm;
@@ -199,7 +198,15 @@ public:
 };
 
 class spng::Splt final : public Chunk {
-  //.....
+public:
+  auto print() const -> void override;
+  [[nodiscard]] auto sample_depth()  const -> uint8_t;
+  [[nodiscard]] auto name()          const -> std::string;
+  [[nodiscard]] auto num_entries()   const -> size_t;
+
+  ~Splt() override = default;
+  explicit Splt(const FlatBuffer::Shared& buff)
+    : Chunk(buff) {}
 };
 
 class spng::Hist final : public Chunk {

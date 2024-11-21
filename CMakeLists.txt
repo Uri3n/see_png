@@ -6,6 +6,11 @@ set(SEE_PNG_SOURCE_FILES
   Src/Main.cpp
   Src/FileRef.cpp
   Src/ConManip.cpp
+  Src/Context.cpp
+  Src/Carrier.cpp
+  Src/Chunks.cpp
+  Src/HexDump.cpp
+  Src/Argparse.cpp
   Include/CompileAttrs.hpp
   Include/FileRef.hpp
   Include/Defer.hpp
@@ -14,10 +19,11 @@ set(SEE_PNG_SOURCE_FILES
   Include/Panic.hpp
   Include/ConManip.hpp
   Include/Fmt.hpp
-  Src/Carrier.cpp
-  Src/Chunks.cpp
   Include/Carrier.hpp
   Include/Chunks.hpp
+  Include/HexDump.hpp
+  Include/Context.hpp
+  Include/Argparse.hpp
 )
 
 add_executable(see_png ${SEE_PNG_SOURCE_FILES})

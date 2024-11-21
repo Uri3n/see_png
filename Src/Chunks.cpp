@@ -8,6 +8,7 @@
 #include <print>
 #include <cstring>
 #include <array>
+#include <stdexcept>
 
 auto spng::Chunk::_throw_bad_chunk() const -> void {
   std::string buff;
@@ -129,6 +130,7 @@ auto spng::Chunk::print() const -> void {
     case Type::hIST: return as<Hist>().print();
     case Type::PLTE: return as<Plte>().print();
     case Type::tIME: return as<Time>().print();
+    case Type::sPLT: return as<Splt>().print();
     default: break;
   }
 
@@ -224,6 +226,23 @@ auto spng::Hist::print() const -> void {
   std::print("{:<12} ", "Entries");
   reset_console();
   std::println(": {}\n", num_entries());
+}
+
+auto spng::Splt::print() const -> void {
+  _default_print_impl();
+  auto display_value = [&]<typename T>(
+    const std::string& name, T&& val ) -> void
+  {
+    set_console(ConFg::Yellow);
+    std::print("{:<12} ", name);
+    reset_console();
+    std::println(": {}", val);
+  };
+
+  display_value("Name", name());
+  display_value("Sample Depth", (uint16_t)sample_depth());
+  display_value("Entries", num_entries());
+  std::println("");
 }
 
 auto spng::Chrm::print() const -> void {
@@ -472,7 +491,7 @@ auto spng::Ihdr::color_type() const -> ColorType {
       throw std::out_of_range("-");
     }
 
-    switch(maybe_bitswap(layout->color_type, Endian::Big)) {
+    switch(layout->color_type) {
       case 0: return ColorType::GrayScale;
       case 2: return ColorType::TrueColor;
       case 3: return ColorType::IndexedColor;
@@ -571,10 +590,9 @@ auto spng::Ihdr::interlace_method() const -> Interlace {
       throw std::out_of_range("-");
     }
 
-    const auto raw = maybe_bitswap(layout->interlace, Endian::Big);
-    if(raw == 0) {
+    if(layout->interlace == 0) {
       return Interlace::None;
-    } if(raw == 1) {
+    } if(layout->interlace == 1) {
       return Interlace::Adam7;
     }
   } catch(const std::out_of_range& _) {
@@ -609,7 +627,7 @@ auto spng::Ihdr::compression_method() const -> Compression {
     // Currently only the DEFLATE
     // algorithm is supported (value of 0).
     // Return an error if it's something else...
-    return maybe_bitswap(layout->compression, Endian::Big) == 0
+    return layout->compression == 0
       ? Compression::Deflate
       : Compression::Invalid;
   } catch(const std::out_of_range& _) {
@@ -667,7 +685,7 @@ auto spng::Srgb::intent() const -> RenderingIntent {
 
   try {
     const auto* intent_ptr = (uint8_t*)(&ptr->at(offset_ + sizeof(Header)));
-    the_intent = maybe_bitswap(*intent_ptr, Endian::Big);
+    the_intent = *intent_ptr;
   } catch(const std::out_of_range& _) {
     _throw_bad_chunk();
   }
@@ -723,7 +741,7 @@ auto spng::Phys::units() const -> Units {
 
   try {
     const auto* layout = (Layout*)(&ptr->at(offset_ + sizeof(Header)));
-    const auto raw = maybe_bitswap(layout->unit_t, Endian::Big);
+    const auto raw = layout->unit_t;
 
     // 0: Unspecified units
     // 1: Pixels Per Meter
@@ -864,20 +882,136 @@ auto spng::Time::values() const -> Layout {
   if(!ptr) {
     throw std::runtime_error("Invalid file buffer.");
   } if(len != sizeof(Time::Layout) || last_byte >= ptr->size()) {
-    throw std::runtime_error("Invalid cHRM chunk size.");
+    throw std::runtime_error("Invalid tIME chunk size.");
   }
 
   try {
     const auto layout  = (Layout*)(&ptr->at(offset_ + sizeof(Header)));
-    the_layout.day     = maybe_bitswap(layout->day, Endian::Big);
-    the_layout.hour    = maybe_bitswap(layout->hour, Endian::Big);
-    the_layout.minute  = maybe_bitswap(layout->minute, Endian::Big);
-    the_layout.month   = maybe_bitswap(layout->month, Endian::Big);
-    the_layout.second  = maybe_bitswap(layout->second, Endian::Big);
     the_layout.year    = maybe_bitswap(layout->year, Endian::Big);
+    the_layout.day     = layout->day;
+    the_layout.hour    = layout->hour;
+    the_layout.minute  = layout->minute;
+    the_layout.month   = layout->month;
+    the_layout.second  = layout->second;
   } catch(const std::out_of_range& _) {
     _throw_bad_chunk();
   }
 
   return the_layout;
 }
+
+auto spng::Splt::name() const -> std::string {
+  const auto len = length();
+  const auto ptr = buff_.lock();
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  std::string the_name;
+  the_name.reserve(79);
+
+  if(!ptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size()) {
+    throw std::runtime_error("Invalid sPLT chunk size.");
+  }
+
+  try {
+    size_t i = offset_ + sizeof(Header);
+    while(ptr->at(i) != '\0') {
+      if(the_name.size() > 79 || i >= len) {
+        // laziness
+        throw std::exception();
+      }
+      the_name += ptr->at(i);
+      ++i;
+    }
+
+    if(the_name.empty()) {
+      throw std::exception();
+    }
+  } catch(const std::exception& _) {
+    _throw_bad_chunk();
+  }
+
+  return the_name;
+}
+
+auto spng::Splt::sample_depth() const -> uint8_t {
+  const auto len = length();
+  const auto nme = name();
+  const auto ptr = buff_.lock();
+  uint8_t the_sample_depth = 0;
+
+  // The offset to the sample depth byte.
+  // We add the offset to the start of the
+  // chunk header, plus the header size,
+  // plus the size of the chunk's name,
+  // and account for the null terminator after that.
+  const size_t the_offset {
+    + offset_
+    + sizeof(Header)
+    + nme.size()
+    + 1
+  };
+
+  // Get the offset to the last byte
+  // of the chunk, as per usual.
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  if(!ptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(the_offset >= ptr->size() || the_offset > last_byte) {
+    throw std::runtime_error("Invalid sPLT chunk size.");
+  }
+
+  try {
+    the_sample_depth = ptr->at(the_offset);
+    // The only permitted values for the
+    // sample depth byte are 8 and 16.
+    // The chunk is corrupted if this isn't the case.
+    if(the_sample_depth != 8 && the_sample_depth != 16) {
+      throw std::exception();
+    }
+  } catch(const std::exception& _) {
+    _throw_bad_chunk();
+  }
+
+  return the_sample_depth;
+}
+
+auto spng::Splt::num_entries() const -> size_t {
+  const auto len = length();
+  const auto nme = name();
+  const auto sd  = sample_depth();
+
+  // Calculate the remaining length of the chunk,
+  // so that we can determine the number of entries.
+  const size_t remaining_len = len - nme.size() - 2;
+
+  // Check if an overflow occurred.
+  if(len == 0 || remaining_len > len) {
+    _throw_bad_chunk();
+  }
+
+  // Make sure the remaining length is valid.
+  // If the sample depth is 8, it must be divisible by 6.
+  // If the sample depth is 16, it must be divisible by 10.
+  if(remaining_len == 0
+    || (sd == 16 && remaining_len % 10 != 0)
+    || (sd == 8 && remaining_len % 6 != 0)
+  ) {
+    _throw_bad_chunk();
+  }
+
+  return sample_depth() == 8
+    ? remaining_len / 6
+    : remaining_len / 10;
+}
+
