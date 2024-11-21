@@ -62,4 +62,5 @@ auto spng::hexdump(const std::span<char>& bytes) -> void {
   if(!line_bin.empty() && !line_ascii.empty()) {
     do_lineprint();
   }
+  std::println("");
 }

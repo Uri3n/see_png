@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 set(SEE_PNG_SOURCE_FILES
   Src/Main.cpp
-  Src/FileRef.cpp
+  Src/InFileRef.cpp
   Src/ConManip.cpp
   Src/Context.cpp
   Src/Carrier.cpp
@@ -12,7 +12,7 @@ set(SEE_PNG_SOURCE_FILES
   Src/HexDump.cpp
   Src/Argparse.cpp
   Include/CompileAttrs.hpp
-  Include/FileRef.hpp
+  Include/InFileRef.hpp
   Include/Defer.hpp
   Include/FlatBuffer.hpp
   Include/Endian.hpp
@@ -24,6 +24,8 @@ set(SEE_PNG_SOURCE_FILES
   Include/HexDump.hpp
   Include/Context.hpp
   Include/Argparse.hpp
+        Src/FileCycle.cpp
+        Include/FileCycle.hpp
 )
 
 add_executable(see_png ${SEE_PNG_SOURCE_FILES})

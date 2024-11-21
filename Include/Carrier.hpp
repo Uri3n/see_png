@@ -18,10 +18,10 @@ public:
   Carrier& operator=(const Carrier&)  = delete;
 
   auto print_summary() const -> void;
-  [[nodiscard]] auto metadata() const -> Ihdr;
-  [[nodiscard]] auto chunks() -> const std::vector<Chunk>&;
+  [[nodiscard]] auto metadata()  const -> Ihdr;
+  [[nodiscard]] auto chunks()    const -> const std::vector<Chunk>&;
 
-  explicit Carrier(const FileRef& file);
+  explicit Carrier(const InFileRef& file);
   explicit Carrier(const FlatBuffer::Buffer& file);
 private:
   std::vector<Chunk> chunks_;
@@ -30,11 +30,13 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline auto spng::Carrier::metadata() const -> Ihdr {
+inline auto spng::Carrier::metadata() const
+-> Ihdr {
   return chunks_.at(0).as<Ihdr>();
 }
 
-inline auto spng::Carrier::chunks() -> const std::vector<Chunk>& {
+inline auto spng::Carrier::chunks() const
+-> const std::vector<Chunk>& {
   return chunks_;
 }
 

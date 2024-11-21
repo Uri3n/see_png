@@ -24,7 +24,15 @@ auto spng::Context::debug_print() const -> void {
     std::print("{}, ", chunk_name);
   }
 
-  std::println("\noutdir  :: {}", output_dir_);
-  std::println("verbose :: {}\n", verbose_ ? "True" : "False");
+  std::print("flags   :: ");
+  std::string _flags;
+  if(flags_ & NoSumm)  _flags += "NoSummary | ";
+  if(flags_ & Verbose) _flags += "Verbose | ";
+  if(flags_ & Silent)  _flags += "Silent | ";
+
+  if(!_flags.empty()) {
+    _flags.erase(_flags.size() - 3);
+  }
+  std::println("{}", _flags);
 }
 

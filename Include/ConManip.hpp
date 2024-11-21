@@ -2,6 +2,7 @@
 #define CONCOLOURS_HPP
 #include <cstdint>
 #include <string>
+#include <print>
 
 namespace spng {
   enum class ConFg : uint16_t {
@@ -28,6 +29,29 @@ namespace spng {
   auto set_console(ConFg fg) -> void;
   auto set_console(ConStyle cs) -> void;
   auto reset_console() -> void;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+inline auto spng::set_console(const ConStyle cs) -> void {
+#if defined(SEE_PNG_WIN32)
+  maybe_enable_console_virtual_sequences();
+#endif
+  std::print("\x1b[{}m", std::to_string(static_cast<uint16_t>(cs)));
+}
+
+inline auto spng::set_console(const ConFg fg) -> void {
+#if defined(SEE_PNG_WIN32)
+  maybe_enable_console_virtual_sequences();
+#endif
+  std::print("\x1b[{}m", std::to_string(static_cast<uint16_t>(fg)));
+}
+
+inline auto spng::reset_console() -> void {
+#if defined(SEE_PNG_WIN32)
+  maybe_enable_console_virtual_sequences();
+#endif
+  std::print("\x1b[m");
 }
 
 #endif //CONCOLOURS_HPP

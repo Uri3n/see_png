@@ -1,9 +1,9 @@
 #ifndef CONTEXT_HPP
 #define CONTEXT_HPP
 #include <CompileAttrs.hpp>
-#include <cstdint>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 namespace spng {
   class Context;
@@ -11,12 +11,17 @@ namespace spng {
 
 class spng::Context {
 public:
+  enum Flags : uint32_t {
+    None     = 0U,
+    Verbose  = 1U,
+    Silent   = 1U << 1,
+    NoSumm   = 1U << 2,
+  };
+
   std::vector<std::string> ifilenames_;
   std::vector<std::string> extract_chunks_;
   std::vector<std::string> dump_chunks_;
-
-  std::string output_dir_;
-  bool verbose_ = false;
+  uint32_t flags_ = None;
 
   [[nodiscard]] SPNG_NOINLINE
   static auto get() -> Context&;

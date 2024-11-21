@@ -19,47 +19,49 @@ static constexpr spng::FlagDescriptor flag_list[] {{
   .lf   = "--verbose",
   .sf   = "-v",
   .desc = "Display verbose info about each chunk.",
-  .req  = false
-}, {
+},{
   .lf   = "--extract-chunks",
   .sf   = "-ec",
   .desc = "Comma-delimited chunk names "
           "to be saved in the form <FILENAME>.<CHUNK>.bin",
-  .req  = false
-}, {
+},{
   .lf   = "--dump-chunks",
   .sf   = "-dc",
   .desc = "Comma delimited chunk names "
           "to be hex-dumped to the console.",
-  .req  = false
-}, {
-  .lf   = "--output-directory",
-  .sf   = "-out",
-  .desc = "Optional directory to place any extracted chunks. "
-          "If it does not exist, it will be created.",
-  .req  = false
+},{
+  .lf   = "--silent",
+  .sf   = "-s",
+  .desc = "Don't display any non-error output.",
+},{
+  .lf   = "--no-summary",
+  .sf   = "-ns",
+  .desc = "Don't display any chunk summaries.",
 }};
 
-auto spng::print_flags() -> void {
+auto spng::print_help() -> void {
   set_console(ConFg::White);
   set_console(ConStyle::Bold);
   std::println("-- Flags:");
   reset_console();
 
-  for(const auto &[lf, sf, desc, req] : flag_list) {
+  for(const auto &[lf, sf, desc] : flag_list) {
     // Flag name
     set_console(ConFg::Magenta);
     std::print("{:<17} {:<3}", lf, sf);
     reset_console();
-
     // Description
-    std::print(" :: {} ", desc);
-
-    // Required flag?
-    set_console(req ? ConFg::Red : ConFg::Green);
-    std::println("{}", req ? "REQUIRED" : "OPTIONAL");
-    reset_console();
+    std::println(" :: {} ", desc);
   }
+
+  set_console(ConFg::White);
+  set_console(ConStyle::Bold);
+  std::println("\n-- Examples:");
+  reset_console();
+
+  std::println("see_png -v file1.png,file2.png");
+  std::println("see_png --verbose --dump_chunks IHDR,IEND,IDAT myfile.png");
+  std::println("see_png --extract-chunks tEXt --silent myfile.png\n");
 }
 
 auto spng::init_context_from_args(const int argc, char** argv) -> bool {
@@ -98,11 +100,29 @@ auto spng::init_context_from_args(const int argc, char** argv) -> bool {
   // - Returns false on failure.
   auto parse_current = [&]() -> bool {
     if(strings.at(ind) == "--verbose" || strings.at(ind) == "-v") {
-      if(Context::get().verbose_) {
+      if(Context::get().flags_ & Context::Verbose) {
         ealready_passed();
         return false;
       }
-      Context::get().verbose_ = true;
+      Context::get().flags_ |= Context::Verbose;
+      return true;
+    }
+
+    if(strings.at(ind) == "--silent" || strings.at(ind) == "-s") {
+      if(Context::get().flags_ & Context::Silent) {
+        ealready_passed();
+        return false;
+      }
+      Context::get().flags_ |= Context::Silent;
+      return true;
+    }
+
+    if(strings.at(ind) == "--no-summary" || strings.at(ind) == "-ns") {
+      if(Context::get().flags_ & Context::NoSumm) {
+        ealready_passed();
+        return false;
+      }
+      Context::get().flags_ |= Context::NoSumm;
       return true;
     }
 
@@ -128,16 +148,6 @@ auto spng::init_context_from_args(const int argc, char** argv) -> bool {
       for(const auto& name : std::ranges::views::split(chunk_names, ',')) {
         Context::get().dump_chunks_.emplace_back(name.begin(), name.end());
       }
-      ++ind;
-      return true;
-    }
-
-    if(strings.at(ind) == "--output-directory" || strings.at(ind) == "-out") {
-      if(!Context::get().output_dir_.empty()) {
-        ealready_passed();
-        return false;
-      }
-      Context::get().output_dir_ = strings.at(ind + 1);
       ++ind;
       return true;
     }

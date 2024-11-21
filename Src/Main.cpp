@@ -1,14 +1,12 @@
 #include <Carrier.hpp>
 #include <Argparse.hpp>
 #include <ConManip.hpp>
+#include <Fmt.hpp>
+#include <FileCycle.hpp>
+#include <Context.hpp>
 #include <print>
-#include <iostream>
 #include <csignal>
 #include <cstdlib>
-
-#include "Context.hpp"
-
-#define TEST_FILE "Tests\\corrupted_3.png"
 using namespace spng;
 
 static auto handle_kb_interrupt(int signal) -> void {
@@ -30,19 +28,11 @@ static auto print_banner() -> void {
   reset_console();
 }
 
-/*
- TODO:
- add support for these chunks:
- IDAT (zlib header), ITXT, TEXT, ZTXT
-
- after that tidy everything up.
-*/
-
-int main(int argc, char** argv) try {
+int main(int argc, char** argv) {
   std::signal(SIGINT, handle_kb_interrupt);
-  /*if(argc < 2) {
+  if(argc < 2) {
     print_banner();
-    print_flags();
+    print_help();
     return 0;
   }
 
@@ -50,17 +40,9 @@ int main(int argc, char** argv) try {
     return 1;
   }
 
-  Context::get().debug_print();*/
-
-  auto ref = FileRef(TEST_FILE);
-  auto carrier = Carrier(ref);
-
-  for(const auto& chunk : carrier.chunks()) {
-    chunk.print();
+  for(const auto& input : Context::get().ifilenames_) {
+    if(!do_file_cycle(input)) return 1;
   }
 
-  carrier.print_summary();
   return 0;
-} catch(const std::exception& e) {
-  std::cerr << "EXCEPTION: " << e.what() << std::endl;
 }

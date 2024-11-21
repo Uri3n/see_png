@@ -8,8 +8,9 @@ namespace spng {
   // not.
   struct FlagDescriptor;
 
-  // Print all flags that the program accepts.
-  auto print_flags() -> void;
+  // Print all flags that the program accepts,
+  // as well as some useful examples.
+  auto print_help() -> void;
 
   // Initializes the global context object,
   // given the values passed to the main() function.
@@ -21,7 +22,6 @@ struct spng::FlagDescriptor {
   std::string_view lf;
   std::string_view sf;
   std::string_view desc;
-  bool req = false;
 };
 
 #endif //ARGPARSE_HPP

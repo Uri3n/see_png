@@ -8,39 +8,39 @@
 #ifndef CHUNKS_HPP
 #define CHUNKS_HPP
 #include <CompileAttrs.hpp>
-#include <FileRef.hpp>
+#include <InFileRef.hpp>
 #include <FlatBuffer.hpp>
 #include <cstdint>
 #include <string_view>
 #include <concepts>
 #include <memory>
 #include <optional>
+#include <filesystem>
 #include <array>
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SEE_PNG_CHUNK_LIST             \
-  X(IHDR) /* IHDR chunk, metadata */   \
-  X(IDAT) /* IDAT chunk, raw data */   \
-  X(IEND) /* IEND chunk, EOF */        \
-  X(bKGD) /* Background color chunk */ \
-  X(cHRM) /* Chromacity chunk */       \
-  X(gAMA) /* Gamma chunk */            \
-  X(hIST) /* Histogram chunk */        \
-  X(iCCP) /* ICC profile chunk */      \
-  X(IPCT) /* ICC - Deprecated */       \
-  X(sBIT) /* Significant Bits */       \
-  X(sRGB) /* sRGB rendering intent */  \
-  X(tEXt) /* Uncompressed text */      \
-  X(zTXt) /* Compressed text */        \
-  X(iTXt) /* UTF-8 encoded text */     \
-  X(tIME) /* Time (last modified) */   \
-  X(pHYs) /* Pixel dimensions */       \
-  X(sPLT) /* Suggested Palette */      \
-  X(tRNS) /* Transparency Info */      \
-  X(PLTE) /* Palette Chunk*/           \
-  X(acTL) /* APNG - Anim Ctrl*/        \
-  X(fRAc) /* APNG - Frame Ctrl */      \
-  X(fdAT) /* APNG - Frame data */      \
+#define SEE_PNG_CHUNK_LIST        \
+  X(IHDR, "Metadata")             \
+  X(IDAT, "Raw Compressed data")  \
+  X(IEND, "End Of File")          \
+  X(bKGD, "Background Color ")    \
+  X(cHRM, "Chromacity")           \
+  X(gAMA, "Gamma")                \
+  X(hIST, "Histogram")            \
+  X(iCCP, "ICC profile")          \
+  X(sBIT, "Significant Bits")     \
+  X(sRGB, "Rendering Intent")     \
+  X(tEXt, "Uncompressed text")    \
+  X(zTXt, "Compressed text")      \
+  X(iTXt, "UTF-8 encoded text")   \
+  X(tIME, "Time (last modified)") \
+  X(pHYs, "Pixel dimensions")     \
+  X(sPLT, "Suggested Palette")    \
+  X(tRNS, "Transparency Info")    \
+  X(PLTE, "Palette Chunk")        \
+  X(acTL, "APNG - Anim Ctrl")     \
+  X(fRAc, "APNG - Frame Ctrl")    \
+  X(fdAT, "APNG - Frame data")    \
 
 namespace spng {
   class Chunk;
@@ -54,6 +54,8 @@ namespace spng {
   class Hist;
   class Time;
   class Splt;
+  class Text;
+  class Itxt;
 }
 
 namespace spng {
@@ -74,16 +76,20 @@ public:
   });
 
   enum class Type : uint8_t {
-    #define X(CHUNK_TYPE) CHUNK_TYPE,
+    #define X(CHUNK_TYPE, UNUSED) CHUNK_TYPE,
     SEE_PNG_CHUNK_LIST
     Unknown,
     #undef X
   };
 
   // For conversion to other chunk types.
+  // Constructs the other chunk and returns it.
   template<class T> requires IsChunk<T>
   auto as() const -> T;
-  virtual auto print() const -> void;
+
+  virtual auto print()                     const -> void;
+  auto extract_to(const std::string& name) const -> void;
+  auto hexdump()                           const -> void;
 
   [[nodiscard]] auto next()        const -> std::optional<Chunk>;
   [[nodiscard]] auto type()        const -> Type;
@@ -197,9 +203,36 @@ public:
     : Chunk(buff) {}
 };
 
-class spng::Splt final : public Chunk {
+// Again, sort of confusing name-wise.
+// This is for the tEXt chunk (ANSI uncompressed text).
+class spng::Text final : public Chunk {
 public:
   auto print() const -> void override;
+  [[nodiscard]] auto keyword() const -> std::string;
+
+  ~Text() override = default;
+  explicit Text(const FlatBuffer::Shared& buff)
+    : Chunk(buff) {}
+};
+
+// International text chunk:
+// UTF-8 encoded text that can be
+// compressed or uncompressed.
+class spng::Itxt final : public Chunk {
+public:
+  auto print()                        const -> void override;
+  [[nodiscard]] auto keyword()        const -> std::string;
+  [[nodiscard]] auto is_compressed()  const -> bool;
+  [[nodiscard]] auto language_tag()   const -> std::string;
+
+  ~Itxt() override = default;
+  explicit Itxt(const FlatBuffer::Shared& buff)
+    : Chunk(buff) {}
+};
+
+class spng::Splt final : public Chunk {
+public:
+  auto print()                       const -> void override;
   [[nodiscard]] auto sample_depth()  const -> uint8_t;
   [[nodiscard]] auto name()          const -> std::string;
   [[nodiscard]] auto num_entries()   const -> size_t;
@@ -301,9 +334,9 @@ public:
     Invalid = 2,     // The value is invalid / corrupted.
   };
 
-  auto print() const -> void override;
-  [[nodiscard]] auto ppu() const -> std::array<uint32_t, 2>;
-  [[nodiscard]] auto units() const -> Units;
+  auto print()                const -> void override;
+  [[nodiscard]] auto ppu()    const -> std::array<uint32_t, 2>;
+  [[nodiscard]] auto units()  const -> Units;
 
   ~Phys() override = default;
   explicit Phys(const FlatBuffer::Shared& buff)

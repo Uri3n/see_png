@@ -88,7 +88,7 @@ auto spng::Carrier::print_summary() const -> void {
 
   set_console(ConFg::Green);
   set_console(ConStyle::Bold);
-  std::println("Summary complete.");
+  std::println("Summary complete.\n\n");
   reset_console();
 }
 
@@ -103,7 +103,7 @@ spng::Carrier::Carrier(const FlatBuffer::Buffer& file) {
   _gather_chunks();
 }
 
-spng::Carrier::Carrier(const FileRef& file) {
+spng::Carrier::Carrier(const InFileRef& file) {
   const auto fsize = file.size();
   buff_ = file.read(fsize);
   _verify_signature();

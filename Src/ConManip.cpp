@@ -1,7 +1,4 @@
 #include <ConManip.hpp>
-#include <Fmt.hpp>
-#include <print>
-#include <string>
 
 #if defined(SEE_PNG_WIN32)
 #include <Windows.h>
@@ -39,26 +36,3 @@ auto spng::maybe_enable_console_virtual_sequences() -> void {
 }
 
 #endif // #if defined(SEE_PNG_WIN32)
-
-auto spng::set_console(const ConStyle cs) -> void {
-#if defined(SEE_PNG_WIN32)
-  maybe_enable_console_virtual_sequences();
-#endif
-  std::print("\x1b[{}m", std::to_string(static_cast<uint16_t>(cs)));
-}
-
-auto spng::set_console(const ConFg fg) -> void {
-#if defined(SEE_PNG_WIN32)
-  maybe_enable_console_virtual_sequences();
-#endif
-  std::print("\x1b[{}m", std::to_string(static_cast<uint16_t>(fg)));
-}
-
-auto spng::reset_console() -> void {
-#if defined(SEE_PNG_WIN32)
-  maybe_enable_console_virtual_sequences();
-#endif
-  std::print("\x1b[m");
-}
-
-

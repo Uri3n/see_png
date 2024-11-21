@@ -1,6 +1,8 @@
 #include <Chunks.hpp>
 #include <Endian.hpp>
 #include <Panic.hpp>
+#include <Defer.hpp>
+#include <HexDump.hpp>
 #include <Fmt.hpp>
 #include <unordered_map>
 #include <algorithm>
@@ -9,18 +11,21 @@
 #include <cstring>
 #include <array>
 #include <stdexcept>
+#include <fstream>
+#include <ios>
 
 auto spng::Chunk::_throw_bad_chunk() const -> void {
   std::string buff;
-  buff.append("This PNG has a corrupted or invalid chunk,\n");
+  buff.append("This PNG has a corrupted or invalid chunk, ");
   buff.append("data cannot be read from it...\n");
-  buff.append(fmt("At offset (header): {:8X}\n", offset_));
+  buff.append(fmt("- At offset (header): 0x{:08X}\n", offset_));
+  buff.append(fmt("- At offset (data): 0x{:08X}\n", offset_ + sizeof(Header)));
   throw std::runtime_error(buff);
 }
 
 auto spng::Chunk::type() const -> Type {
   const auto str = type_string();
-  #define X(CHUNK_TYPE) \
+  #define X(CHUNK_TYPE, UNUSED) \
     if(str == #CHUNK_TYPE) return Type::CHUNK_TYPE;
     SEE_PNG_CHUNK_LIST
   #undef X
@@ -91,11 +96,34 @@ auto spng::Chunk::checksum() const -> uint32_t {
 }
 
 auto spng::Chunk::_default_print_impl() const -> void {
-  // Chunk name: bold, magenta
+  std::string type_name;
+  std::string type_desc;
+
+  switch(type()) {
+  #define X(TYPE, DESC)  \
+    case Type::TYPE:     \
+      type_name = #TYPE; \
+      type_desc = DESC;  \
+      break;
+  SEE_PNG_CHUNK_LIST
+    default:
+      type_name = "Unknown Chunk";
+      type_desc = "???";
+      break;
+  #undef X
+  }
+
+  // Chunk title / name: magenta
   std::print("-- ");
   set_console(ConFg::Magenta);
   set_console(ConStyle::Bold);
-  std::println("{}", type_string());
+  std::print("{:<10}", type_name);
+  reset_console();
+
+  // Chunk description: green
+  std::print(":: ");
+  set_console(ConFg::Green);
+  std::println("{}", type_desc);
   reset_console();
 
   // Offset info: yellow
@@ -131,10 +159,80 @@ auto spng::Chunk::print() const -> void {
     case Type::PLTE: return as<Plte>().print();
     case Type::tIME: return as<Time>().print();
     case Type::sPLT: return as<Splt>().print();
+    case Type::tEXt: return as<Text>().print();
+    case Type::zTXt: return as<Text>().print();
+    case Type::iTXt: return as<Itxt>().print();
     default: break;
   }
 
   _default_print_impl();
+  std::println("");
+}
+
+auto spng::Chunk::hexdump() const -> void {
+  const auto len = length();
+  const auto ptr = buff_.lock();
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  if(!ptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size()) {
+    _throw_bad_chunk();
+  }
+
+  spng::hexdump(
+    {(char*)(ptr->data()
+      + offset_
+      + sizeof(Header)),
+    len});
+}
+
+auto spng::Chunk::extract_to(const std::string& name) const -> void {
+  const auto len = length();
+  const auto ptr = buff_.lock();
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  if(!ptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size()) {
+    _throw_bad_chunk();
+  }
+
+  // Open the output file.
+  std::ofstream of(name, std::ios::binary);
+  if(!of.is_open()) {
+    throw std::ios_base::failure(fmt("Failed to open output file \"{}\".", name));
+  }
+
+  // Write the chunk to the file.
+  of.write((const char*)(ptr->data() + offset_ + sizeof(Header)), len);
+  of.flush();
+  of.close();
+}
+
+auto spng::Itxt::print() const -> void {
+  _default_print_impl();
+
+  auto display_value = [&]<typename T>(
+    const std::string& name, T&& val ) -> void
+  {
+    set_console(ConFg::Yellow);
+    std::print("{:<12} ", name);
+    reset_console();
+    std::println(": {}", val);
+  };
+
+  display_value("Keyword", keyword());
+  display_value("Compressed", is_compressed() ? "True" : "False");
+  display_value("Language Tag", language_tag());
   std::println("");
 }
 
@@ -226,6 +324,14 @@ auto spng::Hist::print() const -> void {
   std::print("{:<12} ", "Entries");
   reset_console();
   std::println(": {}\n", num_entries());
+}
+
+void spng::Text::print() const {
+  _default_print_impl();
+  set_console(ConFg::Yellow);
+  std::print("{:<12} ", "Keyword");
+  reset_console();
+  std::println(": {}\n", keyword());
 }
 
 auto spng::Splt::print() const -> void {
@@ -921,11 +1027,11 @@ auto spng::Splt::name() const -> std::string {
   try {
     size_t i = offset_ + sizeof(Header);
     while(ptr->at(i) != '\0') {
-      if(the_name.size() > 79 || i >= len) {
+      if(the_name.size() > 79 || i >= last_byte) {
         // laziness
         throw std::exception();
       }
-      the_name += ptr->at(i);
+      the_name += (char)ptr->at(i);
       ++i;
     }
 
@@ -1013,5 +1119,136 @@ auto spng::Splt::num_entries() const -> size_t {
   return sample_depth() == 8
     ? remaining_len / 6
     : remaining_len / 10;
+}
+
+auto spng::Text::keyword() const -> std::string {
+  std::string the_keyword;
+  const auto len = length();
+  const auto ptr = buff_.lock();
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  if(!ptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size()) {
+    throw std::runtime_error("Invalid tEXt chunk size.");
+  }
+
+  try {
+    size_t i = offset_ + sizeof(Header);
+    while(ptr->at(i) != '\0' && i <= last_byte) {
+      the_keyword += (char)ptr->at(i);
+      ++i;
+    } if(i > last_byte || ptr->at(i) != '\0') {
+      throw std::exception();
+    }
+  } catch(const std::exception& _) {
+    _throw_bad_chunk();
+  }
+
+  return the_keyword;
+}
+
+auto spng::Itxt::keyword() const -> std::string {
+  // Since the initial layout for an iTXt chunk is
+  // the same as a tEXt chunk (keyword string with null terminator),
+  // we can just "cast" to a tEXt chunk and return the
+  // keyword that way.
+  return as<Text>().keyword();
+}
+
+auto spng::Itxt::is_compressed() const -> bool {
+  const auto kw  = keyword();
+  const auto len = length();
+  const auto ptr = buff_.lock();
+
+  // Get the offset to the last byte of the
+  // chunk's data for sanity checking.
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  // Calculate offset to the compression flag.
+  // offset to start of chunk data, plus the
+  // length of the keyword string, plus the size
+  // of the null terminator (1 byte).
+  const size_t the_offset {
+    + offset_
+    + sizeof(Header)
+    + kw.size()
+    + 1
+  };
+
+  if(ptr == nullptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size() || the_offset > last_byte) {
+    throw std::runtime_error("Invalid tEXt chunk size.");
+  }
+
+  try {
+    const uint8_t flag = ptr->at(the_offset);
+    if(flag != 0 && flag != 1) {
+      throw std::exception();
+    }
+
+    return flag == 1;
+  } catch(const std::exception& _) {
+    _throw_bad_chunk();
+  }
+
+  UNREACHABLE;
+}
+
+auto spng::Itxt::language_tag() const -> std::string {
+  const auto kw  = keyword();
+  const auto len = length();
+  const auto ptr = buff_.lock();
+
+  // Get the offset to the last byte of the
+  // chunk's data for sanity checking.
+  const size_t last_byte {
+    + offset_
+    + sizeof(Header)
+    + (len - 1)
+  };
+
+  // Offset to the start of the language tag:
+  // chunk data offset
+  // + size of the keyword
+  // + null terminator
+  // + compression flag byte
+  // + compression method byte
+  const size_t the_offset {
+    + offset_
+    + sizeof(Header)
+    + kw.size()
+    + 3
+  };
+
+  if(ptr == nullptr) {
+    throw std::runtime_error("Invalid file buffer.");
+  } if(last_byte >= ptr->size() || the_offset > last_byte) {
+    throw std::runtime_error("Invalid tEXt chunk size.");
+  }
+
+  std::string the_tag;
+  try {
+    size_t i = the_offset;
+    while(ptr->at(i) != '\0' && i <= last_byte) {
+      the_tag += (char)ptr->at(i);
+      ++i;
+    } if(i > last_byte || ptr->at(i) != '\0') {
+      throw std::exception();
+    }
+  } catch(const std::exception&) {
+    _throw_bad_chunk();
+  }
+
+  return the_tag;
 }
 
