@@ -10,8 +10,8 @@
 // ~ Noinline, forceinline ~
 // Niche usecases, possibly useful for performance reasons.
 #if defined(__clang__) || defined(__GNUC__)
-  #define BITHAT_NOINLINE    __attribute__((noinline))
-  #define BITHAT_FORCEINLINE __attribute__((always_inline)) inline
+  #define SPNG_NOINLINE    __attribute__((noinline))
+  #define SPNG_FORCEINLINE __attribute__((always_inline)) inline
 #elif defined(_MSC_VER)
   #define SPNG_NOINLINE    __declspec(noinline)
   #define SPNG_FORCEINLINE __forceinline inline

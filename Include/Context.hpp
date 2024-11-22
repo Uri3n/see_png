@@ -11,7 +11,7 @@ namespace spng {
 
 class spng::Context {
 public:
-  enum Flags : uint32_t {
+  enum Flags : uint8_t {
     None     = 0U,
     Verbose  = 1U,
     Silent   = 1U << 1,
@@ -21,7 +21,7 @@ public:
   std::vector<std::string> ifilenames_;
   std::vector<std::string> extract_chunks_;
   std::vector<std::string> dump_chunks_;
-  uint32_t flags_ = None;
+  uint8_t flags_ = None;
 
   [[nodiscard]] SPNG_NOINLINE
   static auto get() -> Context&;

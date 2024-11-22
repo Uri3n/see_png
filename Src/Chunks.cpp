@@ -150,18 +150,18 @@ auto spng::Chunk::_default_print_impl() const -> void {
 
 auto spng::Chunk::print() const -> void {
   switch(type()) {
-    case Type::IHDR: return as<Ihdr>().print();
-    case Type::sRGB: return as<Srgb>().print();
-    case Type::pHYs: return as<Phys>().print();
-    case Type::gAMA: return as<Gama>().print();
-    case Type::cHRM: return as<Chrm>().print();
-    case Type::hIST: return as<Hist>().print();
-    case Type::PLTE: return as<Plte>().print();
-    case Type::tIME: return as<Time>().print();
-    case Type::sPLT: return as<Splt>().print();
-    case Type::tEXt: return as<Text>().print();
-    case Type::zTXt: return as<Text>().print();
-    case Type::iTXt: return as<Itxt>().print();
+    case Type::IHDR: as<Ihdr>().print(); return;
+    case Type::sRGB: as<Srgb>().print(); return;
+    case Type::pHYs: as<Phys>().print(); return;
+    case Type::gAMA: as<Gama>().print(); return;
+    case Type::cHRM: as<Chrm>().print(); return;
+    case Type::hIST: as<Hist>().print(); return;
+    case Type::PLTE: as<Plte>().print(); return;
+    case Type::tIME: as<Time>().print(); return;
+    case Type::sPLT: as<Splt>().print(); return;
+    case Type::tEXt: as<Text>().print(); return;
+    case Type::zTXt: as<Text>().print(); return;
+    case Type::iTXt: as<Itxt>().print(); return;
     default: break;
   }
 
