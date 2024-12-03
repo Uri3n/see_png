@@ -13,4 +13,4 @@ see_png **does not have any additional dependencies**, but you will **need** a C
 since that's the standard I decided to mess with. I mainly wrote this tool to learn more
 about the PNG file format, as well as about safely handling binary file formats in C++ using
 bounds-checking features and whatnot. If you're looking for a reference for a PNG parser, this might
-also be useful to you. Here's some example output:
+also be useful to you.
