@@ -14,5 +14,3 @@ since that's the standard I decided to mess with. I mainly wrote this tool to le
 about the PNG file format, as well as about safely handling binary file formats in C++ using
 bounds-checking features and whatnot. If you're looking for a reference for a PNG parser, this might
 also be useful to you. Here's some example output:
-
-![seepng_example](https://github.com/user-attachments/assets/c004f245-c49b-4682-93f5-617c19f6e45b)
