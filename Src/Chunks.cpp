@@ -418,7 +418,7 @@ auto spng::Time::print() const -> void {
     ": {} {} {} {}:{}:{} UTC\n",
     _month,
     static_cast<uint32_t>(vals.day),
-    vals.year,
+    static_cast<uint32_t>(vals.year),
     static_cast<uint32_t>(vals.hour),
     static_cast<uint32_t>(vals.minute),
     static_cast<uint32_t>(vals.second)
